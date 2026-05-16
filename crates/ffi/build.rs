@@ -59,6 +59,7 @@ fn main() {
     .allowlist_type("libraw_processed_image_t")
     .allowlist_type("LibRaw_image_formats")
     .allowlist_type("libraw_output_params_t")
+    .allowlist_type("LibRaw_errors")
     .use_core()
     .generate_comments(false)
     .derive_default(true)

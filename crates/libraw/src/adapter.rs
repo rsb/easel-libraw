@@ -24,10 +24,13 @@ impl LibRawProcessor {
     Ok(Self { ptr })
   }
 
-  fn open_file(&mut self, c_path: &CString) -> Result<(), fail::Error> {
+  fn open_file(&mut self, c_path: &CString, path: &Path) -> Result<(), fail::Error> {
     let rc = unsafe { ffi::libraw_open_file(self.ptr, c_path.as_ptr()) };
     if rc != 0 {
-      return Err(fail::Error::corrupt(libraw_error(rc, "libraw_open_file")));
+      if rc == ffi::LibRaw_errors_LIBRAW_IO_ERROR && path.exists() {
+        return Err(fail::Error::corrupt(libraw_error_message(rc, "libraw_open_file")));
+      }
+      return Err(libraw_error(rc, "libraw_open_file"));
     }
     Ok(())
   }
@@ -35,7 +38,7 @@ impl LibRawProcessor {
   fn unpack(&mut self) -> Result<(), fail::Error> {
     let rc = unsafe { ffi::libraw_unpack(self.ptr) };
     if rc != 0 {
-      return Err(fail::Error::corrupt(libraw_error(rc, "libraw_unpack")));
+      return Err(libraw_error(rc, "libraw_unpack"));
     }
     Ok(())
   }
@@ -43,7 +46,7 @@ impl LibRawProcessor {
   fn unpack_thumb(&mut self) -> Result<(), fail::Error> {
     let rc = unsafe { ffi::libraw_unpack_thumb(self.ptr) };
     if rc != 0 {
-      return Err(fail::Error::corrupt(libraw_error(rc, "libraw_unpack_thumb")));
+      return Err(libraw_error(rc, "libraw_unpack_thumb"));
     }
     Ok(())
   }
@@ -65,7 +68,7 @@ impl LibRawProcessor {
   fn dcraw_process(&mut self) -> Result<(), fail::Error> {
     let rc = unsafe { ffi::libraw_dcraw_process(self.ptr) };
     if rc != 0 {
-      return Err(fail::Error::corrupt(libraw_error(rc, "libraw_dcraw_process")));
+      return Err(libraw_error(rc, "libraw_dcraw_process"));
     }
     Ok(())
   }
@@ -76,10 +79,7 @@ impl LibRawProcessor {
     let thumb_ptr = unsafe { ffi::libraw_dcraw_make_mem_thumb(self.ptr, &mut errcode) };
 
     if thumb_ptr.is_null() {
-      return Err(fail::Error::corrupt(libraw_error(
-        errcode,
-        "libraw_dcraw_make_mem_thumb",
-      )));
+      return Err(libraw_error(errcode, "libraw_dcraw_make_mem_thumb"));
     }
 
     let result = unsafe {
@@ -126,10 +126,7 @@ impl LibRawProcessor {
     let image_ptr = unsafe { ffi::libraw_dcraw_make_mem_image(self.ptr, &mut errcode) };
 
     if image_ptr.is_null() {
-      return Err(fail::Error::corrupt(libraw_error(
-        errcode,
-        "libraw_dcraw_make_mem_image",
-      )));
+      return Err(libraw_error(errcode, "libraw_dcraw_make_mem_image"));
     }
 
     let (owned_rgb, width, height) = unsafe {
@@ -192,7 +189,7 @@ impl RawDecode for LibRawAdapter {
     let mut processor = LibRawProcessor::new().context("LibRawAdapter::decode init failed")?;
 
     processor
-      .open_file(&c_path)
+      .open_file(&c_path, path)
       .context("LibRawAdapter::decode open failed")?;
 
     processor
@@ -217,7 +214,7 @@ impl RawDecode for LibRawAdapter {
       LibRawProcessor::new().context("LibRawAdapter::decode_thumbnail init failed")?;
 
     processor
-      .open_file(&c_path)
+      .open_file(&c_path, path)
       .context("LibRawAdapter::decode_thumbnail open failed")?;
 
     processor
@@ -236,7 +233,7 @@ impl RawDecode for LibRawAdapter {
       LibRawProcessor::new().context("LibRawAdapter::decode_preview init failed")?;
 
     processor
-      .open_file(&c_path)
+      .open_file(&c_path, path)
       .context("LibRawAdapter::decode_preview open failed")?;
 
     processor
@@ -288,13 +285,34 @@ fn decode_jpeg_thumbnail(jpeg_data: &[u8]) -> Result<ImageBuffer, fail::Error> {
   }
 }
 
-fn libraw_error(rc: i32, func: &str) -> String {
+fn libraw_error_message(rc: i32, func: &str) -> String {
   let ptr = unsafe { ffi::libraw_strerror(rc) };
   if ptr.is_null() {
-    return format!("{func} failed: code {rc}");
+    format!("{func} failed: code {rc}")
+  } else {
+    let msg = unsafe { CStr::from_ptr(ptr) }.to_string_lossy();
+    format!("{func} failed: {msg}")
   }
-  let msg = unsafe { CStr::from_ptr(ptr) }.to_string_lossy();
-  format!("{func} failed: {msg}")
+}
+
+fn libraw_error(rc: i32, func: &str) -> fail::Error {
+  let detail = libraw_error_message(rc, func);
+
+  match rc {
+    ffi::LibRaw_errors_LIBRAW_IO_ERROR | ffi::LibRaw_errors_LIBRAW_INPUT_CLOSED => {
+      fail::Error::io(detail)
+    }
+    ffi::LibRaw_errors_LIBRAW_UNSUFFICIENT_MEMORY
+    | ffi::LibRaw_errors_LIBRAW_MEMPOOL_OVERFLOW => fail::Error::resource(detail),
+    ffi::LibRaw_errors_LIBRAW_FILE_UNSUPPORTED
+    | ffi::LibRaw_errors_LIBRAW_UNSUPPORTED_THUMBNAIL
+    | ffi::LibRaw_errors_LIBRAW_NOT_IMPLEMENTED
+    | ffi::LibRaw_errors_LIBRAW_NO_THUMBNAIL
+    | ffi::LibRaw_errors_LIBRAW_REQUEST_FOR_NONEXISTENT_THUMBNAIL => {
+      fail::Error::unsupported(detail)
+    }
+    _ => fail::Error::corrupt(detail),
+  }
 }
 
 #[cfg(unix)]
