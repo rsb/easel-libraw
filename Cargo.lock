@@ -74,6 +74,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "easel-libraw"
+version = "0.0.1"
+dependencies = [
+ "easel-libraw-ffi",
+ "jpeg-decoder",
+]
+
+[[package]]
+name = "easel-libraw-ffi"
+version = "0.0.1"
+dependencies = [
+ "bindgen",
+ "cc",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -105,37 +121,6 @@ name = "jpeg-decoder"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00810f1d8b74be64b13dbf3db89ac67740615d6c891f0e7b6179326533011a07"
-
-[[package]]
-name = "lab-fail"
-version = "0.0.1"
-
-[[package]]
-name = "lab-image"
-version = "0.0.1"
-dependencies = [
- "lab-fail",
-]
-
-[[package]]
-name = "lab-libraw"
-version = "0.0.1"
-dependencies = [
- "bindgen",
- "cc",
- "jpeg-decoder",
- "lab-fail",
- "lab-image",
- "lab-raw-decoder",
-]
-
-[[package]]
-name = "lab-raw-decoder"
-version = "0.0.1"
-dependencies = [
- "lab-fail",
- "lab-image",
-]
 
 [[package]]
 name = "libc"

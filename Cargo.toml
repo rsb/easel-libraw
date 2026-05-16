@@ -1,8 +1,6 @@
 [workspace]
 members = [
-  "crates/fail",
-  "crates/image",
-  "crates/raw-decoder",
+  "crates/ffi",
   "crates/libraw",
 ]
 resolver = "3"
@@ -12,6 +10,4 @@ edition = "2024"
 publish = false
 
 [workspace.dependencies]
-lab-fail = { path = "crates/fail" }
-lab-image = { path = "crates/image" }
-lab-raw-decoder = { path = "crates/raw-decoder" }
+easel-libraw-ffi = { path = "crates/ffi" }

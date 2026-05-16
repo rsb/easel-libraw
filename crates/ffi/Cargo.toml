@@ -1,0 +1,12 @@
+[package]
+name = "easel-libraw-ffi"
+version = "0.0.1"
+edition.workspace = true
+publish.workspace = true
+
+[build-dependencies]
+bindgen = "0.71"
+cc = "1"
+
+[lib]
+path = "src/lib.rs"
