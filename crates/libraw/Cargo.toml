@@ -1,0 +1,18 @@
+[package]
+name = "lab-libraw"
+version = "0.0.1"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+jpeg-decoder = { version = "0.3", default-features = false }
+lab-fail = { workspace = true }
+lab-image = { workspace = true }
+lab-raw-decoder = { workspace = true }
+
+[build-dependencies]
+bindgen = "0.71"
+cc = "1"
+
+[lib]
+path = "src/lib.rs"

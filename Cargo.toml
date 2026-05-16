@@ -1,0 +1,17 @@
+[workspace]
+members = [
+  "crates/fail",
+  "crates/image",
+  "crates/raw-decoder",
+  "crates/libraw",
+]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+lab-fail = { path = "crates/fail" }
+lab-image = { path = "crates/image" }
+lab-raw-decoder = { path = "crates/raw-decoder" }
