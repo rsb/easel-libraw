@@ -7,3 +7,4 @@ publish.workspace = true
 [dependencies]
 easel-libraw-ffi = { workspace = true }
 jpeg-decoder = { version = "0.3", default-features = false }
+

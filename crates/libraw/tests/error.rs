@@ -112,7 +112,7 @@ fn error_display_empty_message_shows_kind_only() {
 #[test]
 fn error_source_returns_some_when_set() {
   use std::error::Error as StdError;
-  let source = std::io::Error::new(std::io::ErrorKind::Other, "inner");
+  let source = std::io::Error::other("inner");
   let err = Error::io("outer").with_source(source);
   assert!(err.source().is_some());
   assert!(err.source().unwrap().to_string().contains("inner"));

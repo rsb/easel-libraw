@@ -41,10 +41,7 @@ impl LibRawProcessor {
   fn open_file(&mut self, c_path: &CString, path: &Path) -> Result<(), fail::Error> {
     let rc = unsafe { ffi::libraw_open_file(self.ptr, c_path.as_ptr()) };
     if rc != 0 {
-      if rc == ffi::LibRaw_errors_LIBRAW_IO_ERROR && path.exists() {
-        return Err(fail::Error::corrupt(libraw_error_message(rc, "libraw_open_file")));
-      }
-      return Err(libraw_error(rc, "libraw_open_file"));
+      return Err(classify_open_file_error(rc, path.exists()));
     }
     Ok(())
   }
@@ -150,7 +147,9 @@ impl LibRawProcessor {
       let image = &*guard.0;
 
       if image.type_ != ffi::LibRaw_image_formats_LIBRAW_IMAGE_BITMAP {
-        return Err(fail::Error::unsupported("decoded image is not bitmap format"));
+        return Err(fail::Error::unsupported(
+          "decoded image is not bitmap format",
+        ));
       }
 
       if image.bits != 16 {
@@ -280,15 +279,13 @@ fn decode_jpeg_thumbnail(jpeg_data: &[u8]) -> Result<ImageBuffer, fail::Error> {
     .decode()
     .map_err(|e| fail::Error::corrupt(format!("JPEG thumbnail decode failed: {e}")))?;
 
-  let info = decoder.info().ok_or_else(|| {
-    fail::Error::corrupt("JPEG thumbnail decoded but produced no image info")
-  })?;
+  let info = decoder
+    .info()
+    .ok_or_else(|| fail::Error::corrupt("JPEG thumbnail decoded but produced no image info"))?;
 
   match info.pixel_format {
-    PixelFormat::RGB24 => {
-      ImageBuffer::from_rgb8(&pixels, info.width as u32, info.height as u32)
-        .context("JPEG thumbnail pixel conversion failed")
-    }
+    PixelFormat::RGB24 => ImageBuffer::from_rgb8(&pixels, info.width as u32, info.height as u32)
+      .context("JPEG thumbnail pixel conversion failed"),
     PixelFormat::L8 => {
       let rgb: Vec<u8> = pixels.iter().flat_map(|&g| [g, g, g]).collect();
       ImageBuffer::from_rgb8(&rgb, info.width as u32, info.height as u32)
@@ -300,13 +297,25 @@ fn decode_jpeg_thumbnail(jpeg_data: &[u8]) -> Result<ImageBuffer, fail::Error> {
   }
 }
 
-fn libraw_error_message(rc: i32, func: &str) -> String {
-  let ptr = unsafe { ffi::libraw_strerror(rc) };
+fn format_libraw_error(ptr: *const std::ffi::c_char, rc: i32, func: &str) -> String {
   if ptr.is_null() {
     format!("{func} failed: code {rc}")
   } else {
     let msg = unsafe { CStr::from_ptr(ptr) }.to_string_lossy();
     format!("{func} failed: {msg}")
+  }
+}
+
+fn libraw_error_message(rc: i32, func: &str) -> String {
+  let ptr = unsafe { ffi::libraw_strerror(rc) };
+  format_libraw_error(ptr, rc, func)
+}
+
+fn classify_open_file_error(rc: i32, path_exists: bool) -> fail::Error {
+  if rc == ffi::LibRaw_errors_LIBRAW_IO_ERROR && path_exists {
+    fail::Error::corrupt(libraw_error_message(rc, "libraw_open_file"))
+  } else {
+    libraw_error(rc, "libraw_open_file")
   }
 }
 
@@ -317,8 +326,9 @@ fn libraw_error(rc: i32, func: &str) -> fail::Error {
     ffi::LibRaw_errors_LIBRAW_IO_ERROR | ffi::LibRaw_errors_LIBRAW_INPUT_CLOSED => {
       fail::Error::io(detail)
     }
-    ffi::LibRaw_errors_LIBRAW_UNSUFFICIENT_MEMORY
-    | ffi::LibRaw_errors_LIBRAW_MEMPOOL_OVERFLOW => fail::Error::resource(detail),
+    ffi::LibRaw_errors_LIBRAW_UNSUFFICIENT_MEMORY | ffi::LibRaw_errors_LIBRAW_MEMPOOL_OVERFLOW => {
+      fail::Error::resource(detail)
+    }
     ffi::LibRaw_errors_LIBRAW_FILE_UNSUPPORTED
     | ffi::LibRaw_errors_LIBRAW_UNSUPPORTED_THUMBNAIL
     | ffi::LibRaw_errors_LIBRAW_NOT_IMPLEMENTED
@@ -396,7 +406,10 @@ mod tests {
     let err = libraw_error(ffi::LibRaw_errors_LIBRAW_NO_THUMBNAIL, "test");
     assert_eq!(err.kind(), Kind::Unsupported);
 
-    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_REQUEST_FOR_NONEXISTENT_THUMBNAIL, "test");
+    let err = libraw_error(
+      ffi::LibRaw_errors_LIBRAW_REQUEST_FOR_NONEXISTENT_THUMBNAIL,
+      "test",
+    );
     assert_eq!(err.kind(), Kind::Unsupported);
   }
 
@@ -404,5 +417,36 @@ mod tests {
   fn libraw_error_unknown_code_maps_to_corrupt() {
     let err = libraw_error(999999, "test");
     assert_eq!(err.kind(), Kind::Corrupt);
+  }
+
+  #[test]
+  fn classify_open_file_io_error_with_existing_path_returns_corrupt() {
+    let err = classify_open_file_error(ffi::LibRaw_errors_LIBRAW_IO_ERROR, true);
+    assert_eq!(err.kind(), Kind::Corrupt);
+  }
+
+  #[test]
+  fn classify_open_file_io_error_with_missing_path_returns_io() {
+    let err = classify_open_file_error(ffi::LibRaw_errors_LIBRAW_IO_ERROR, false);
+    assert_eq!(err.kind(), Kind::Io);
+  }
+
+  #[test]
+  fn classify_open_file_non_io_error_ignores_path_exists() {
+    let err = classify_open_file_error(ffi::LibRaw_errors_LIBRAW_FILE_UNSUPPORTED, true);
+    assert_eq!(err.kind(), Kind::Unsupported);
+  }
+
+  #[test]
+  fn format_libraw_error_null_strerror_uses_code_fallback() {
+    let msg = format_libraw_error(std::ptr::null(), 12345, "some_func");
+    assert_eq!(msg, "some_func failed: code 12345");
+  }
+
+  #[test]
+  fn format_libraw_error_valid_ptr_uses_strerror_message() {
+    let c_msg = CString::new("test error message").unwrap();
+    let msg = format_libraw_error(c_msg.as_ptr(), 1, "open_file");
+    assert_eq!(msg, "open_file failed: test error message");
   }
 }
