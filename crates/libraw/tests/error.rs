@@ -89,9 +89,38 @@ fn result_ext_context_on_ok() {
 }
 
 #[test]
+fn error_is_send_sync() {
+  fn assert_send_sync<T: Send + Sync>() {}
+  assert_send_sync::<Error>();
+}
+
+#[test]
 fn kind_display() {
   assert_eq!(format!("{}", Kind::Io), "i/o failure");
   assert_eq!(format!("{}", Kind::Unsupported), "unsupported format");
   assert_eq!(format!("{}", Kind::Corrupt), "corrupt data");
   assert_eq!(format!("{}", Kind::Resource), "resource exhaustion");
+}
+
+#[test]
+fn error_display_empty_message_shows_kind_only() {
+  let err = Error::io("");
+  let display = format!("{err}");
+  assert_eq!(display, "i/o failure");
+}
+
+#[test]
+fn error_source_returns_some_when_set() {
+  use std::error::Error as StdError;
+  let source = std::io::Error::new(std::io::ErrorKind::Other, "inner");
+  let err = Error::io("outer").with_source(source);
+  assert!(err.source().is_some());
+  assert!(err.source().unwrap().to_string().contains("inner"));
+}
+
+#[test]
+fn error_source_returns_none_when_unset() {
+  use std::error::Error as StdError;
+  let err = Error::io("no source");
+  assert!(err.source().is_none());
 }

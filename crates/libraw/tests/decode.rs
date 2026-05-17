@@ -128,3 +128,31 @@ fn adapter_implements_send_and_sync() {
   fn assert_send_sync<T: Send + Sync>() {}
   assert_send_sync::<LibRawAdapter>();
 }
+
+struct DecodeOnly;
+
+impl RawDecode for DecodeOnly {
+  fn decode(&self, _path: &Path) -> Result<easel_libraw::ImageBuffer, easel_libraw::Error> {
+    Err(easel_libraw::Error::unsupported("stub"))
+  }
+}
+
+#[test]
+fn default_decode_thumbnail_returns_unsupported() {
+  let d = DecodeOnly;
+  let result = d.decode_thumbnail(Path::new("/tmp/anything"));
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!(err.kind(), Kind::Unsupported);
+  assert!(err.message().contains("thumbnail"));
+}
+
+#[test]
+fn default_decode_preview_returns_unsupported() {
+  let d = DecodeOnly;
+  let result = d.decode_preview(Path::new("/tmp/anything"));
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!(err.kind(), Kind::Unsupported);
+  assert!(err.message().contains("preview"));
+}

@@ -8,6 +8,20 @@ use crate::error::{self as fail, ResultExt};
 use crate::image::ImageBuffer;
 
 // ---------------------------------------------------------------------------
+// ProcessedImage — RAII guard for C-allocated image pointers
+// ---------------------------------------------------------------------------
+
+struct ProcessedImage(*mut ffi::libraw_processed_image_t);
+
+impl Drop for ProcessedImage {
+  fn drop(&mut self) {
+    if !self.0.is_null() {
+      unsafe { ffi::libraw_dcraw_clear_mem(self.0) };
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // LibRawProcessor — RAII wrapper
 // ---------------------------------------------------------------------------
 
@@ -82,8 +96,10 @@ impl LibRawProcessor {
       return Err(libraw_error(errcode, "libraw_dcraw_make_mem_thumb"));
     }
 
-    let result = unsafe {
-      let thumb = &*thumb_ptr;
+    let guard = ProcessedImage(thumb_ptr);
+
+    let (owned, format, width, height, bits, colors) = unsafe {
+      let thumb = &*guard.0;
       let data_size = thumb.data_size as usize;
       let data_ptr = thumb.data.as_ptr();
       let owned = std::slice::from_raw_parts(data_ptr, data_size).to_vec();
@@ -93,11 +109,10 @@ impl LibRawProcessor {
       let bits = thumb.bits;
       let colors = thumb.colors;
 
-      ffi::libraw_dcraw_clear_mem(thumb_ptr);
       (owned, format, width, height, bits, colors)
     };
 
-    let (owned, format, width, height, bits, colors) = result;
+    drop(guard);
 
     if format == ffi::LibRaw_image_formats_LIBRAW_IMAGE_JPEG {
       decode_jpeg_thumbnail(&owned)
@@ -129,16 +144,16 @@ impl LibRawProcessor {
       return Err(libraw_error(errcode, "libraw_dcraw_make_mem_image"));
     }
 
+    let guard = ProcessedImage(image_ptr);
+
     let (owned_rgb, width, height) = unsafe {
-      let image = &*image_ptr;
+      let image = &*guard.0;
 
       if image.type_ != ffi::LibRaw_image_formats_LIBRAW_IMAGE_BITMAP {
-        ffi::libraw_dcraw_clear_mem(image_ptr);
         return Err(fail::Error::unsupported("decoded image is not bitmap format"));
       }
 
       if image.bits != 16 {
-        ffi::libraw_dcraw_clear_mem(image_ptr);
         return Err(fail::Error::unsupported(format!(
           "expected 16-bit output, got {}-bit",
           image.bits
@@ -146,7 +161,6 @@ impl LibRawProcessor {
       }
 
       if image.colors != 3 {
-        ffi::libraw_dcraw_clear_mem(image_ptr);
         return Err(fail::Error::unsupported(format!(
           "expected 3-channel RGB, got {} channels",
           image.colors
@@ -161,9 +175,10 @@ impl LibRawProcessor {
       let width = image.width as u32;
       let height = image.height as u32;
 
-      ffi::libraw_dcraw_clear_mem(image_ptr);
       (owned, width, height)
     };
+
+    drop(guard);
 
     ImageBuffer::from_rgb16(&owned_rgb, width, height)
       .context("LibRaw decode pixel conversion failed")
@@ -328,4 +343,66 @@ fn path_to_cstring(path: &Path) -> Result<CString, fail::Error> {
     .to_str()
     .ok_or_else(|| fail::Error::io("path is not valid UTF-8"))?;
   CString::new(s).map_err(|_| fail::Error::io("path contains interior null byte"))
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::error::Kind;
+
+  #[test]
+  fn decode_jpeg_thumbnail_corrupt_data() {
+    let result = decode_jpeg_thumbnail(b"not a jpeg at all");
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), Kind::Corrupt);
+  }
+
+  #[test]
+  fn decode_jpeg_thumbnail_empty_data() {
+    let result = decode_jpeg_thumbnail(b"");
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), Kind::Corrupt);
+  }
+
+  #[test]
+  fn libraw_error_maps_io_codes() {
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_IO_ERROR, "test");
+    assert_eq!(err.kind(), Kind::Io);
+
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_INPUT_CLOSED, "test");
+    assert_eq!(err.kind(), Kind::Io);
+  }
+
+  #[test]
+  fn libraw_error_maps_resource_codes() {
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_UNSUFFICIENT_MEMORY, "test");
+    assert_eq!(err.kind(), Kind::Resource);
+
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_MEMPOOL_OVERFLOW, "test");
+    assert_eq!(err.kind(), Kind::Resource);
+  }
+
+  #[test]
+  fn libraw_error_maps_unsupported_codes() {
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_FILE_UNSUPPORTED, "test");
+    assert_eq!(err.kind(), Kind::Unsupported);
+
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_UNSUPPORTED_THUMBNAIL, "test");
+    assert_eq!(err.kind(), Kind::Unsupported);
+
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_NOT_IMPLEMENTED, "test");
+    assert_eq!(err.kind(), Kind::Unsupported);
+
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_NO_THUMBNAIL, "test");
+    assert_eq!(err.kind(), Kind::Unsupported);
+
+    let err = libraw_error(ffi::LibRaw_errors_LIBRAW_REQUEST_FOR_NONEXISTENT_THUMBNAIL, "test");
+    assert_eq!(err.kind(), Kind::Unsupported);
+  }
+
+  #[test]
+  fn libraw_error_unknown_code_maps_to_corrupt() {
+    let err = libraw_error(999999, "test");
+    assert_eq!(err.kind(), Kind::Corrupt);
+  }
 }
