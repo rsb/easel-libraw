@@ -111,8 +111,11 @@ fn main() {
 fn detect_openmp() -> bool {
   let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
   let probe_src = out_dir.join("openmp_probe.cpp");
-  std::fs::write(&probe_src, "#include <omp.h>\nint main() { return omp_get_max_threads(); }\n")
-    .expect("failed to write OpenMP probe source");
+  std::fs::write(
+    &probe_src,
+    "#include <omp.h>\nint main() { return omp_get_max_threads(); }\n",
+  )
+  .expect("failed to write OpenMP probe source");
 
   let mut probe = cc::Build::new();
   probe.cpp(true).file(&probe_src).flag("-fopenmp");

@@ -118,7 +118,9 @@ fn decode_preview_path_with_interior_null_returns_io() {
 #[test]
 fn error_display_includes_message() {
   let adapter = LibRawAdapter;
-  let err = adapter.decode(Path::new("/tmp/does_not_exist_9f8a7b.cr2")).unwrap_err();
+  let err = adapter
+    .decode(Path::new("/tmp/does_not_exist_9f8a7b.cr2"))
+    .unwrap_err();
   let display = format!("{err}");
   assert!(!display.is_empty());
 }

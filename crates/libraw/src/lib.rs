@@ -1,7 +1,7 @@
+mod adapter;
+pub mod decode;
 pub mod error;
 pub mod image;
-pub mod decode;
-mod adapter;
 
 pub use adapter::LibRawAdapter;
 pub use decode::RawDecode;
