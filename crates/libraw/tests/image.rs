@@ -130,3 +130,27 @@ fn image_buffer_pixels_accessible_by_index() {
   let p = buf.pixels()[2];
   assert_eq!(p.r(), 70);
 }
+
+#[test]
+fn new_overflow_dimensions() {
+  let pixels = vec![Pixel::from_packed(0); 4];
+  let result = ImageBuffer::new(u32::MAX, u32::MAX, pixels);
+  assert!(result.is_err());
+  assert_eq!(result.unwrap_err().kind(), Kind::Corrupt);
+}
+
+#[test]
+fn from_rgb8_overflow_dimensions() {
+  let data = vec![0u8; 12];
+  let result = ImageBuffer::from_rgb8(&data, u32::MAX, u32::MAX);
+  assert!(result.is_err());
+  assert_eq!(result.unwrap_err().kind(), Kind::Corrupt);
+}
+
+#[test]
+fn from_rgb16_overflow_dimensions() {
+  let data = vec![0u8; 12];
+  let result = ImageBuffer::from_rgb16(&data, u32::MAX, u32::MAX);
+  assert!(result.is_err());
+  assert_eq!(result.unwrap_err().kind(), Kind::Corrupt);
+}
