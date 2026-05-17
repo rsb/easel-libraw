@@ -41,7 +41,9 @@ pub struct ImageBuffer {
 
 impl ImageBuffer {
   pub fn new(width: u32, height: u32, pixels: Vec<Pixel>) -> Result<Self, fail::Error> {
-    let expected = (width as usize) * (height as usize);
+    let expected = (width as usize)
+      .checked_mul(height as usize)
+      .ok_or_else(|| fail::Error::corrupt("width * height overflows usize"))?;
     if pixels.len() != expected {
       return Err(
         fail::Error::corrupt(format!(
@@ -74,7 +76,10 @@ impl ImageBuffer {
   }
 
   pub fn from_rgb8(data: &[u8], width: u32, height: u32) -> Result<Self, fail::Error> {
-    let expected = (width as usize) * (height as usize) * 3;
+    let expected = (width as usize)
+      .checked_mul(height as usize)
+      .and_then(|n| n.checked_mul(3))
+      .ok_or_else(|| fail::Error::corrupt("RGB8 dimensions overflow usize"))?;
     if data.len() != expected {
       return Err(
         fail::Error::corrupt(format!(
@@ -101,7 +106,10 @@ impl ImageBuffer {
   }
 
   pub fn from_rgb16(data: &[u8], width: u32, height: u32) -> Result<Self, fail::Error> {
-    let expected = (width as usize) * (height as usize) * 6;
+    let expected = (width as usize)
+      .checked_mul(height as usize)
+      .and_then(|n| n.checked_mul(6))
+      .ok_or_else(|| fail::Error::corrupt("RGB16 dimensions overflow usize"))?;
     if data.len() != expected {
       return Err(
         fail::Error::corrupt(format!(
