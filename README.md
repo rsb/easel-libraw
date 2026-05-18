@@ -126,8 +126,12 @@ for pixel in image.pixels() {
   let packed = pixel.packed(); // 0x00RRGGBB
 }
 
-// Row-major layout: pixel at (x, y) is at index y * width + x
-let (x, y) = (100, 200);
+// Coordinate-based access with bounds checking
+if let Some(pixel) = image.get(100, 200) {
+  println!("r={} g={} b={}", pixel.r(), pixel.g(), pixel.b());
+}
+
+// Or direct slice access for bulk operations (row-major layout)
 let pixel = image.pixels()[(y * image.width() + x) as usize];
 ```
 
