@@ -10,4 +10,4 @@ edition = "2024"
 publish = false
 
 [workspace.dependencies]
-easel-libraw-ffi = { path = "crates/ffi" }
+rsb-libraw-ffi = { path = "crates/ffi" }

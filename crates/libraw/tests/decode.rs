@@ -1,8 +1,8 @@
 use std::io::Write;
 use std::path::Path;
 
-use easel_libraw::error::Kind;
-use easel_libraw::{LibRawAdapter, RawDecode};
+use rsb_libraw::error::Kind;
+use rsb_libraw::{LibRawAdapter, RawDecode};
 
 #[test]
 fn decode_nonexistent_file_returns_io() {
@@ -30,7 +30,7 @@ fn decode_preview_nonexistent_file_returns_io() {
 
 #[test]
 fn decode_non_raw_file_returns_corrupt() {
-  let dir = std::env::temp_dir().join("easel_libraw_test_not_raw");
+  let dir = std::env::temp_dir().join("rsb_libraw_test_not_raw");
   std::fs::create_dir_all(&dir).unwrap();
   let path = dir.join("garbage.cr2");
   let mut f = std::fs::File::create(&path).unwrap();
@@ -49,7 +49,7 @@ fn decode_non_raw_file_returns_corrupt() {
 
 #[test]
 fn decode_thumbnail_non_raw_file_returns_corrupt() {
-  let dir = std::env::temp_dir().join("easel_libraw_test_thumb_not_raw");
+  let dir = std::env::temp_dir().join("rsb_libraw_test_thumb_not_raw");
   std::fs::create_dir_all(&dir).unwrap();
   let path = dir.join("garbage.nef");
   let mut f = std::fs::File::create(&path).unwrap();
@@ -68,7 +68,7 @@ fn decode_thumbnail_non_raw_file_returns_corrupt() {
 
 #[test]
 fn decode_preview_non_raw_file_returns_corrupt() {
-  let dir = std::env::temp_dir().join("easel_libraw_test_preview_not_raw");
+  let dir = std::env::temp_dir().join("rsb_libraw_test_preview_not_raw");
   std::fs::create_dir_all(&dir).unwrap();
   let path = dir.join("garbage.arw");
   let mut f = std::fs::File::create(&path).unwrap();
@@ -134,8 +134,8 @@ fn adapter_implements_send_and_sync() {
 struct DecodeOnly;
 
 impl RawDecode for DecodeOnly {
-  fn decode(&self, _path: &Path) -> Result<easel_libraw::ImageBuffer, easel_libraw::Error> {
-    Err(easel_libraw::Error::unsupported("stub"))
+  fn decode(&self, _path: &Path) -> Result<rsb_libraw::ImageBuffer, rsb_libraw::Error> {
+    Err(rsb_libraw::Error::unsupported("stub"))
   }
 }
 

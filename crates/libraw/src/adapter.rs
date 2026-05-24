@@ -1,7 +1,7 @@
 use std::ffi::{CStr, CString};
 use std::path::Path;
 
-use easel_libraw_ffi as ffi;
+use rsb_libraw_ffi as ffi;
 
 use crate::decode::RawDecode;
 use crate::error::{self as fail, ResultExt};

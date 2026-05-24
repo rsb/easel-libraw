@@ -1,10 +1,10 @@
 [package]
-name = "easel-libraw"
+name = "rsb-libraw"
 version = "0.0.1"
 edition.workspace = true
 publish.workspace = true
 
 [dependencies]
-easel-libraw-ffi = { workspace = true }
+rsb-libraw-ffi = { workspace = true }
 jpeg-decoder = { version = "0.3", default-features = false }
 

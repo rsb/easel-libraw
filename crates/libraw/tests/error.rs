@@ -1,4 +1,4 @@
-use easel_libraw::error::{Error, Kind, ResultExt};
+use rsb_libraw::error::{Error, Kind, ResultExt};
 
 #[test]
 fn error_io_has_correct_kind() {

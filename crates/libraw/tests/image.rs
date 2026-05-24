@@ -1,5 +1,5 @@
-use easel_libraw::error::Kind;
-use easel_libraw::image::{ImageBuffer, Pixel};
+use rsb_libraw::error::Kind;
+use rsb_libraw::image::{ImageBuffer, Pixel};
 
 // ---------------------------------------------------------------------------
 // ImageBuffer::get

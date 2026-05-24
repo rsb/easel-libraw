@@ -1,8 +1,8 @@
-// Build script for easel-libraw-ffi: compiles the vendored LibRaw C++ library
+// Build script for rsb-libraw-ffi: compiles the vendored LibRaw C++ library
 // into a static archive and generates Rust FFI bindings via bindgen.
 //
 // This is the slow side of the two-crate split. A full C++ compile takes ~35s,
-// but cargo caches the result — downstream crates depending on easel-libraw get
+// but cargo caches the result — downstream crates depending on rsb-libraw get
 // sub-second incremental builds as long as the vendored source hasn't changed.
 //
 // The build has three phases:

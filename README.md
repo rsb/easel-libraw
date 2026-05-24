@@ -1,4 +1,4 @@
-# easel-libraw
+# rsb-libraw
 
 Safe Rust bindings to [LibRaw](https://www.libraw.org/) for camera RAW
 image decoding. Supports approximately 1,500 camera models (CR2, CR3,
@@ -13,7 +13,7 @@ Two crates, one boundary:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  easel-libraw              (pure Rust, fast build)   │
+│  rsb-libraw              (pure Rust, fast build)   │
 │                                                     │
 │  pub mod error   — Kind, Error, ResultExt           │
 │  pub mod image   — Pixel, ImageBuffer               │
@@ -22,7 +22,7 @@ Two crates, one boundary:
 └─────────────────────┬───────────────────────────────┘
                       │ depends on
 ┌─────────────────────▼───────────────────────────────┐
-│  easel-libraw-ffi          (C++ build, slow, cached) │
+│  rsb-libraw-ffi          (C++ build, slow, cached) │
 │                                                     │
 │  build.rs        — cc compiles vendor C++ source    │
 │                  — bindgen generates FFI bindings    │
@@ -52,7 +52,7 @@ all cores. Without it, decoding is single-threaded but still correct.
 
 ```rust
 use std::path::Path;
-use easel_libraw::{LibRawAdapter, RawDecode};
+use rsb_libraw::{LibRawAdapter, RawDecode};
 
 let adapter = LibRawAdapter;
 let path = Path::new("/photos/DSC_0042.NEF");
@@ -68,7 +68,7 @@ Call them in order — each produces a better result than the last:
 
 ```rust
 use std::path::Path;
-use easel_libraw::{LibRawAdapter, RawDecode, ImageBuffer};
+use rsb_libraw::{LibRawAdapter, RawDecode, ImageBuffer};
 
 let adapter = LibRawAdapter;
 let path = Path::new("/photos/IMG_4521.CR3");
@@ -94,8 +94,8 @@ display(&full);
 Errors are classified by recovery action:
 
 ```rust
-use easel_libraw::{LibRawAdapter, RawDecode};
-use easel_libraw::error::Kind;
+use rsb_libraw::{LibRawAdapter, RawDecode};
+use rsb_libraw::error::Kind;
 
 let adapter = LibRawAdapter;
 
@@ -115,7 +115,7 @@ match adapter.decode(path) {
 `ImageBuffer` stores pixels as packed sRGB `u32` values:
 
 ```rust
-use easel_libraw::image::Pixel;
+use rsb_libraw::image::Pixel;
 
 let image = adapter.decode(path)?;
 
@@ -142,7 +142,7 @@ changing calling code:
 
 ```rust
 use std::path::Path;
-use easel_libraw::{RawDecode, LibRawAdapter, ImageBuffer, Error};
+use rsb_libraw::{RawDecode, LibRawAdapter, ImageBuffer, Error};
 
 fn import_raw(decoder: &dyn RawDecode, path: &Path) -> Result<ImageBuffer, Error> {
   decoder.decode(path)
